@@ -247,6 +247,9 @@ class H323Transactor : public PObject
         PBoolean    useAlternate;
     };
 
+    virtual Request * GetLastRequest();
+    virtual void SetLastRequest(Request * request);
+
   protected:
     void Construct();
 

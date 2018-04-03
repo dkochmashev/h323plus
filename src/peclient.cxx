@@ -707,8 +707,8 @@ PBoolean H323PeerElement::OnReceiveServiceConfirmation(const H501PDU & pdu, cons
   if (!H323_AnnexG::OnReceiveServiceConfirmation(pdu, pduBody))
     return FALSE;
 
-  if (lastRequest->responseInfo != NULL)
-    *(H501PDU *)lastRequest->responseInfo = pdu;
+  if (GetLastRequest()->responseInfo != NULL)
+    *(H501PDU *)GetLastRequest()->responseInfo = pdu;
 
   return TRUE;
 }
@@ -1162,8 +1162,8 @@ PBoolean H323PeerElement::OnReceiveDescriptorUpdateACK(const H501PDU & pdu, cons
   if (!H323_AnnexG::OnReceiveDescriptorUpdateACK(pdu, pduBody))
     return FALSE;
 
-  if (lastRequest->responseInfo != NULL)
-    *(H501_MessageCommonInfo *)lastRequest->responseInfo = pdu.m_common;
+  if (GetLastRequest()->responseInfo != NULL)
+    *(H501_MessageCommonInfo *)GetLastRequest()->responseInfo = pdu.m_common;
 
   return TRUE;
 }
@@ -1440,8 +1440,8 @@ PBoolean H323PeerElement::OnReceiveAccessConfirmation(const H501PDU & pdu, const
   if (!H323_AnnexG::OnReceiveAccessConfirmation(pdu, pduBody))
     return FALSE;
 
-  if (lastRequest->responseInfo != NULL)
-    *(H501PDU *)lastRequest->responseInfo = pdu;
+  if (GetLastRequest()->responseInfo != NULL)
+    *(H501PDU *)GetLastRequest()->responseInfo = pdu;
 
   return TRUE;
 }

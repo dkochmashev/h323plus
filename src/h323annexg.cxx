@@ -101,7 +101,7 @@ H323_AnnexG::H323_AnnexG(H323EndPoint & ep, const H323TransportAddress & addr)
 
 void H323_AnnexG::Construct()
 {
-  lastRequest = NULL;
+  SetLastRequest(NULL);
   requests.DisallowDeleteObjects();
 }
 

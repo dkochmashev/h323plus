@@ -158,7 +158,7 @@ void H323Transactor::Construct()
 {
   nextSequenceNumber = PRandom::Number()%65536;
   checkResponseCryptoTokens = TRUE;
-  lastRequest = NULL;
+  SetLastRequest(NULL);
 
   requests.DisallowDeleteObjects();
 }
@@ -275,10 +275,10 @@ void H323Transactor::HandleTransactions(PThread &, H323_INT)
     H323TransactionPDU * response = CreateTransactionPDU();
     if (response->Read(*transport)) {
       consecutiveErrors = 0;
-      lastRequest = NULL;
-      if (HandleTransaction(response->GetPDU()) && lastRequest) {
-        lastRequest->responseHandled.Signal();
-        lastRequest->responseMutex.Signal();
+      SetLastRequest(NULL);
+      if (HandleTransaction(response->GetPDU()) && GetLastRequest()) {
+        GetLastRequest()->responseHandled.Signal();
+        GetLastRequest()->responseMutex.Signal();
       } 
     }
     else {
@@ -453,16 +453,16 @@ PBoolean H323Transactor::MakeRequest(Request & request)
 PBoolean H323Transactor::CheckForResponse(unsigned reqTag, unsigned seqNum, const PASN_Choice * reason)
 {
   requestsMutex.Wait();
-  lastRequest = requests.GetAt(seqNum);
+  SetLastRequest(requests.GetAt(seqNum));
 
-  if (lastRequest == NULL) {
+  if (GetLastRequest() == NULL) {
     requestsMutex.Signal();
     PTRACE(3, "Trans\tTimed out or received sequence number (" << seqNum << ") for PDU we never requested");
     return FALSE;
   }
 
-  lastRequest->responseMutex.Wait();
-  lastRequest->CheckResponse(reqTag, reason);
+  GetLastRequest()->responseMutex.Wait();
+  GetLastRequest()->CheckResponse(reqTag, reason);
   requestsMutex.Signal();
 
   return TRUE;
@@ -475,17 +475,17 @@ PBoolean H323Transactor::HandleRequestInProgress(const H323TransactionPDU & pdu,
   unsigned seqNum = pdu.GetSequenceNumber();
 
   requestsMutex.Wait();
-  lastRequest = requests.GetAt(seqNum);
+  SetLastRequest(requests.GetAt(seqNum));
 
-  if (lastRequest == NULL) {
+  if (GetLastRequest() == NULL) {
     requestsMutex.Signal();
     PTRACE(3, "Trans\tTimed out or received sequence number (" << seqNum << ") for PDU we never requested");
     return FALSE;
   }
 
-  lastRequest->responseMutex.Wait();
+  GetLastRequest()->responseMutex.Wait();
   PTRACE(3, "Trans\tReceived RIP on sequence number " << seqNum);
-  lastRequest->OnReceiveRIP(delay);
+  GetLastRequest()->OnReceiveRIP(delay);
 
   requestsMutex.Signal();
   return TRUE;
@@ -502,8 +502,8 @@ PBoolean H323Transactor::CheckCryptoTokens(const H323TransactionPDU & pdu,
   if (!GetCheckResponseCryptoTokens())
     return TRUE;
 
-  if (lastRequest != NULL && pdu.GetAuthenticators().IsEmpty()) {
-    ((H323TransactionPDU &)pdu).SetAuthenticators(lastRequest->requestPDU.GetAuthenticators());
+  if (GetLastRequest() != NULL && pdu.GetAuthenticators().IsEmpty()) {
+    ((H323TransactionPDU &)pdu).SetAuthenticators(GetLastRequest()->requestPDU.GetAuthenticators());
     PTRACE(4, "Trans\tUsing credentials from request: "
            << setfill(',') << pdu.GetAuthenticators() << setfill(' '));
   }
@@ -517,16 +517,27 @@ PBoolean H323Transactor::CheckCryptoTokens(const H323TransactionPDU & pdu,
      it can wait for the full timeout for any other packets that might have
      the correct tokens, preventing a possible DOS attack.
    */
-  if (lastRequest != NULL) {
-    lastRequest->responseResult = Request::BadCryptoTokens;
-    lastRequest->responseHandled.Signal();
-    lastRequest->responseMutex.Signal();
-    lastRequest = NULL;
+  if (GetLastRequest() != NULL) {
+    GetLastRequest()->responseResult = Request::BadCryptoTokens;
+    GetLastRequest()->responseHandled.Signal();
+    GetLastRequest()->responseMutex.Signal();
+    SetLastRequest(NULL);
   }
 
   return FALSE;
 }
 
+
+H323Transactor::Request * H323Transactor::GetLastRequest()
+{
+  return lastRequest;
+}
+
+
+void H323Transactor::SetLastRequest(H323Transactor::Request * request)
+{
+  lastRequest = request;
+}
 
 /////////////////////////////////////////////////////////////////////////////
 

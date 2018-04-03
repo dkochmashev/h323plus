@@ -299,8 +299,8 @@ PBoolean H323Gatekeeper::OnReceiveGatekeeperConfirm(const H225_GatekeeperConfirm
     SetAssignedGatekeeper(gcf.m_assignedGatekeeper);
     PTRACE(2, "RAS\tAssigned Gatekeeper redirected " << assignedGK);
     // This will force the gatekeeper to register to the assigned Gatekeeper.
-    if (lastRequest->responseInfo != NULL) {
-      H323TransportAddress & gkAddress = *(H323TransportAddress *)lastRequest->responseInfo;
+    if (GetLastRequest()->responseInfo != NULL) {
+      H323TransportAddress & gkAddress = *(H323TransportAddress *)GetLastRequest()->responseInfo;
       gkAddress = assignedGK.rasAddress;
       gatekeeperIdentifier = PString();
     }
@@ -322,8 +322,8 @@ PBoolean H323Gatekeeper::OnReceiveGatekeeperReject(const H225_GatekeeperReject &
                   grj.m_altGKInfo.m_altGKisPermanent);
   }
 
-  if ((alternates.GetSize() > 0) && (lastRequest->responseInfo != NULL)) {
-      H323TransportAddress & gkAddress = *(H323TransportAddress *)lastRequest->responseInfo;
+  if ((alternates.GetSize() > 0) && (GetLastRequest()->responseInfo != NULL)) {
+      H323TransportAddress & gkAddress = *(H323TransportAddress *)GetLastRequest()->responseInfo;
       gkAddress = alternates[0].rasAddress;
   }
 
@@ -803,7 +803,7 @@ PBoolean H323Gatekeeper::OnReceiveUnregistrationReject(const H225_Unregistration
   if (!H225_RAS::OnReceiveUnregistrationReject(urj))
     return FALSE;
 
-  if (lastRequest->rejectReason != H225_UnregRejectReason::e_callInProgress) {
+  if (GetLastRequest()->rejectReason != H225_UnregRejectReason::e_callInProgress) {
     registrationFailReason = UnregisteredLocally;
     timeToLive = 0; // zero disables lightweight RRQ
   }
@@ -1143,7 +1143,7 @@ PBoolean H323Gatekeeper::OnReceiveAdmissionConfirm(const H225_AdmissionConfirm &
   if (!H225_RAS::OnReceiveAdmissionConfirm(acf))
     return FALSE;
 
-  AdmissionRequestResponseInfo & info = *(AdmissionRequestResponseInfo *)lastRequest->responseInfo;
+  AdmissionRequestResponseInfo & info = *(AdmissionRequestResponseInfo *)GetLastRequest()->responseInfo;
   info.allocatedBandwidth = acf.m_bandWidth;
   if (info.param.transportAddress != NULL)
     *info.param.transportAddress = acf.m_destCallSignalAddress;
@@ -1205,7 +1205,7 @@ PBoolean H323Gatekeeper::OnReceiveAdmissionReject(const H225_AdmissionReject & a
   if (!H225_RAS::OnReceiveAdmissionReject(arj))
     return FALSE;
 
-  AdmissionRequestResponseInfo & info = *(AdmissionRequestResponseInfo *)lastRequest->responseInfo;
+  AdmissionRequestResponseInfo & info = *(AdmissionRequestResponseInfo *)GetLastRequest()->responseInfo;
   info.connection.OnReceivedARJ(arj);
 
 #ifdef H323_H248
@@ -1345,8 +1345,8 @@ PBoolean H323Gatekeeper::OnReceiveBandwidthConfirm(const H225_BandwidthConfirm &
   if (!H225_RAS::OnReceiveBandwidthConfirm(bcf))
     return FALSE;
 
-  if (lastRequest->responseInfo != NULL)
-    *(unsigned *)lastRequest->responseInfo = bcf.m_bandWidth;
+  if (GetLastRequest()->responseInfo != NULL)
+    *(unsigned *)GetLastRequest()->responseInfo = bcf.m_bandWidth;
 
   return TRUE;
 }

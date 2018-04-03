@@ -686,9 +686,9 @@ PBoolean H225_RAS::OnReceiveRegistrationConfirm(const H323RasPDU & pdu, const H2
        }
   }
 
-  if (lastRequest != NULL) {
+  if (GetLastRequest() != NULL) {
     PString endpointIdentifier = rcf.m_endpointIdentifier;
-    const H235Authenticators & authenticators = lastRequest->requestPDU.GetAuthenticators();
+    const H235Authenticators & authenticators = GetLastRequest()->requestPDU.GetAuthenticators();
     for (PINDEX i = 0; i < authenticators.GetSize(); i++) {
       H235Authenticator & authenticator = authenticators[i];
       if (authenticator.UseGkAndEpIdentifiers())
@@ -1224,8 +1224,8 @@ PBoolean H225_RAS::OnReceiveLocationConfirm(const H323RasPDU &, const H225_Locat
   if (!CheckForResponse(H225_RasMessage::e_locationRequest, lcf.m_requestSeqNum))
     return FALSE;
 
-  if (lastRequest->responseInfo != NULL) {
-    H323TransportAddress & locatedAddress = *(H323TransportAddress *)lastRequest->responseInfo;
+  if (GetLastRequest()->responseInfo != NULL) {
+    H323TransportAddress & locatedAddress = *(H323TransportAddress *)GetLastRequest()->responseInfo;
     locatedAddress = lcf.m_callSignalAddress;
   }
 
