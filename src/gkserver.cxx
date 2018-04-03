@@ -2110,14 +2110,14 @@ H323GatekeeperListener::H323GatekeeperListener(H323EndPoint & ep,
 
   transport->SetPromiscuous(H323Transport::AcceptFromAny);
 
-  PTRACE(2, "H323gk\tGatekeeper server created.");
+  PTRACE(2, "H323gk\tGatekeeper listener created.");
 }
 
 
 H323GatekeeperListener::~H323GatekeeperListener()
 {
   StopChannel();
-  PTRACE(2, "H323gk\tGatekeeper server destroyed.");
+  PTRACE(2, "H323gk\tGatekeeper listener destroyed.");
 }
 
 
