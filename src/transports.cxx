@@ -1353,10 +1353,8 @@ H323Transport * H323ListenerTCP::Accept(const PTimeInterval & timeout)
     return NULL;
   }
 
-  if (socket->GetErrorCode() != PChannel::Interrupted) {
+  if (socket->GetErrorCode() != PChannel::Interrupted)
     PTRACE(1, TypeAsString() << "\tAccept error:" << socket->GetErrorText());
-    listener.Close();
-  }
 
   delete socket;
   return NULL;
