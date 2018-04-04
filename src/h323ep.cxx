@@ -2147,7 +2147,22 @@ PBoolean H323EndPoint::ResolveCallParty(const PString & _remoteParty, PStringLis
    if (remoteParty.Find('@') != P_MAX_INDEX) {
        PString number = remoteParty;
        if (number.Left(5) != proto)
-          number = proto + ":" + number;
+           number = proto + ":" + number;
+
+       PINDEX hostAddrStartsFrom = remoteParty.Find('@') + 1;
+       PINDEX hostAddrEndsAt = remoteParty.Find(':', hostAddrStartsFrom);
+       PINDEX hostAddrLen = 0;
+       if (hostAddrEndsAt != P_MAX_INDEX)
+           hostAddrLen = hostAddrEndsAt - hostAddrStartsFrom;
+       else
+           hostAddrLen = remoteParty.GetLength() - hostAddrStartsFrom;
+
+       PIPSocket::Address hostAddr;
+       if (hostAddr.FromString(remoteParty.Mid(hostAddrStartsFrom, hostAddrLen))) {
+           PTRACE(4, "H323\tRemote party " << remoteParty << " host is an IP address");
+           addresses = PStringList(remoteParty);
+           return true;
+       }
 
        PStringList str;
        PBoolean found = FALSE;
