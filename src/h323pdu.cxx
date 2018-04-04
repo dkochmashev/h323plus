@@ -1532,9 +1532,8 @@ void H323SignalPDU::SetQ931Fields(const H323Connection & connection,
 
   if (!connection.GetDisplayName().IsEmpty())
     displayName = connection.GetDisplayName();
-  if (displayName.IsEmpty())
-    displayName = number;
-  q931pdu.SetDisplayName(displayName);
+  if (!displayName.IsEmpty())
+    q931pdu.SetDisplayName(displayName);
 
   if (insertPartyNumbers) {
     PString otherNumber = connection.GetRemotePartyNumber();
