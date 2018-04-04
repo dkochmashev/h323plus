@@ -231,6 +231,7 @@ ostream & operator<<(ostream & o, H323Connection::AnswerCallResponse s)
     "AnswerCallPending",
     "AnswerCallDeferred",
     "AnswerCallAlertWithMedia",
+    "AnswerCallProgressWithMedia",
     "AnswerCallDeferredWithMedia",
     "AnswerCallNowWithAlert"
   };
@@ -2303,39 +2304,79 @@ void H323Connection::AnsweringCall(AnswerCallResponse response)
     default : // AnswerCallDeferred
       break;
 
-    case AnswerCallDeferredWithMedia :
+    case AnswerCallProgressWithMedia :
       if (!mediaWaitForConnect) {
-        // create a new facility PDU if doing AnswerDeferredWithMedia
+        // create a new progress PDU if doing AnswerProgressWithMedia
         H323SignalPDU want245PDU;
         H225_Progress_UUIE & prog = want245PDU.BuildProgress(*this);
-
-        PBoolean sendPDU = TRUE;
 
         if (SendFastStartAcknowledge(prog.m_fastStart))
           prog.IncludeOptionalField(H225_Progress_UUIE::e_fastStart);
         else {
+          prog.IncludeOptionalField(H225_Progress_UUIE::e_fastConnectRefused);
+
           // See if aborted call
           if (connectionState == ShuttingDownConnection)
             break;
 
           // Do early H.245 start
-          H225_Facility_UUIE & fac = *want245PDU.BuildFacility(*this, FALSE, H225_FacilityReason::e_startH245);
           earlyStart = TRUE;
-          if (!h245Tunneling && (controlChannel == NULL)) {
+          if (!nonCallConnection) {
+            if (h245Tunneling) {
+              // If no channels selected (or never provided) do traditional H245 start
+              if (fastStartState == FastStartDisabled) {
+                h245TunnelTxPDU = &want245PDU; // Piggy back H245 on this reply
+                PBoolean ok = StartControlNegotiations();
+                h245TunnelTxPDU = NULL;
+                if (!ok)
+                  break;
+              }
+              HandleTunnelPDU(&want245PDU);
+            }
+            else if (controlChannel == NULL) { // Start separate H.245 channel if not tunneling.
+              if (!StartControlChannel())
+                break;
+              prog.IncludeOptionalField(H225_Progress_UUIE::e_h245Address);
+              controlChannel->SetUpTransportPDU(prog.m_h245Address, TRUE);
+            }
+          }
+        }
+        WriteSignalPDU(want245PDU);
+      }
+      break;
+
+    case AnswerCallDeferredWithMedia :
+      if (!mediaWaitForConnect && fastStartState != FastStartResponse) {
+        // create a new facility PDU if doing AnswerDeferredWithMedia
+        H323SignalPDU want245PDU;
+        H225_Facility_UUIE & fac = *want245PDU.BuildFacility(*this, FALSE, H225_FacilityReason::e_startH245);
+
+        // See if aborted call
+        if (connectionState == ShuttingDownConnection)
+          break;
+
+        // Do early H.245 start
+        earlyStart = TRUE;
+        if (!nonCallConnection) {
+          if (h245Tunneling) {
+            // If no channels selected (or never provided) do traditional H245 start
+            if (fastStartState == FastStartDisabled) {
+              h245TunnelTxPDU = &want245PDU; // Piggy back H245 on this reply
+              PBoolean ok = StartControlNegotiations();
+              h245TunnelTxPDU = NULL;
+              if (!ok)
+                break;
+            }
+            HandleTunnelPDU(&want245PDU);
+          }
+          else if (controlChannel == NULL) { // Start separate H.245 channel if not tunneling.
             if (!StartControlChannel())
               break;
-
             fac.IncludeOptionalField(H225_Facility_UUIE::e_h245Address);
             controlChannel->SetUpTransportPDU(fac.m_h245Address, TRUE);
           }
-          else
-            sendPDU = FALSE;
         }
-
-        if (sendPDU) {
-          HandleTunnelPDU(&want245PDU);
-          WriteSignalPDU(want245PDU);
-        }
+        WriteSignalPDU(want245PDU);
       }
       break;
 
@@ -2343,7 +2384,6 @@ void H323Connection::AnsweringCall(AnswerCallResponse response)
       if (alertingPDU != NULL && !mediaWaitForConnect) {
         H225_Alerting_UUIE & alerting = alertingPDU->m_h323_uu_pdu.m_h323_message_body;
 
-        PBoolean sendPDU = TRUE;
         if (SendFastStartAcknowledge(alerting.m_fastStart))
           alerting.IncludeOptionalField(H225_Alerting_UUIE::e_fastStart);
         else {
@@ -2355,29 +2395,35 @@ void H323Connection::AnsweringCall(AnswerCallResponse response)
 
           // Do early H.245 start
           earlyStart = TRUE;
-          if (!h245Tunneling && (controlChannel == NULL)) {
-            if (!StartControlChannel())
-              break;
-            alerting.IncludeOptionalField(H225_Alerting_UUIE::e_h245Address);
-            controlChannel->SetUpTransportPDU(alerting.m_h245Address, TRUE);
+          if (!nonCallConnection) {
+            if (h245Tunneling) {
+              // If no channels selected (or never provided) do traditional H245 start
+              if (fastStartState == FastStartDisabled) {
+                h245TunnelTxPDU = alertingPDU; // Piggy back H245 on this reply
+                PBoolean ok = StartControlNegotiations();
+                h245TunnelTxPDU = NULL;
+                if (!ok)
+                  break;
+              }
+              HandleTunnelPDU(alertingPDU);
+            }
+            else if (controlChannel == NULL) { // Start separate H.245 channel if not tunneling.
+              if (!StartControlChannel())
+                break;
+              alerting.IncludeOptionalField(H225_Alerting_UUIE::e_h245Address);
+              controlChannel->SetUpTransportPDU(alerting.m_h245Address, TRUE);
+            }
           }
-          else
-            sendPDU = FALSE;
         }
-
-        if (sendPDU) {
-          HandleTunnelPDU(alertingPDU);
 
 #ifdef H323_H450
-          h450dispatcher->AttachToAlerting(*alertingPDU);
+        h450dispatcher->AttachToAlerting(*alertingPDU);
 #endif
 
-          WriteSignalPDU(*alertingPDU);
-          alertingTime = PTime();
-        }
-        break;
+        WriteSignalPDU(*alertingPDU);
+        alertingTime = PTime();
       }
-      // else clause falls into AnswerCallPending case
+      break;
 
     case AnswerCallPending :
       if (alertingPDU != NULL) {
