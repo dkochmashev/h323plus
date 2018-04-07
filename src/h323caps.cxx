@@ -3323,23 +3323,25 @@ PINDEX H323Capabilities::SetCapability(PINDEX descriptorNum,
 static PBoolean MatchWildcard(const PCaselessString & str, const PStringArray & wildcard)
 {
   PINDEX last = 0;
-  for (PINDEX i = 0; i < wildcard.GetSize(); i++) {
-    if (wildcard[i].IsEmpty())
-      last = str.GetLength();
-    else {
-      PINDEX next = str.Find(wildcard[i], last);
-      
-      if (next == P_MAX_INDEX)
-        return FALSE;
-      // Hack to avoid accidentally deleting H.239 cap as the codec is after position 5  -SH
-      if (next > 5 && str.Left(5) == "H.239")
-        return FALSE;
+  bool skipping = false;
 
-      last = next + wildcard[i].GetLength();
+  for (PINDEX i = 0; i < wildcard.GetSize(); ++i)
+  {
+    if (wildcard[i].IsEmpty()) {
+      skipping = true;
+      continue;
     }
+    skipping = false;
+    PINDEX substrPos = str.Find(wildcard[i], last);
+    if (substrPos == P_MAX_INDEX)
+      return false;
+    last = substrPos + wildcard[i].GetLength();
   }
 
-  return TRUE;
+  if (last == str.GetLength() || skipping)
+    return true;
+
+  return false;
 }
 
 
